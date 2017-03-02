@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Five Square</title>
+    <link rel="icon" href="favicon.png" type="image/x-icon"/>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(function(){
+
+            /*  Insertion Pipeline for inserting messages
+             *  Handles the refresh button being hit.
+             */
+            function insertEntry(entry){
+                if(entry.hasOwnProperty("Rumor")){
+                    var body = entry.Rumor;
+
+                    var row = $('<div>')
+
+                    var senderBox = $("<div class='inline'>")
+                    senderBox.append("<span>Sender:</span>");
+                    var senderName = $('<span>');
+                    senderName.text(body.Originator);
+
+                    var messageBox = $("<div>")
+                    messageBox.append("<span>Message:</span>");
+                    var messageText = $('<span>');
+                    messageText.text(body.Text);
+
+                    senderBox.append(senderName);
+                    messageBox.append(messageText);
+                    row.append(senderBox);
+                    row.append(messageBox);
+                    $('#messages').append(row);
+                }
+            }
+
+            /*  Refresh Handler
+             *  Handles the refresh button being hit.
+             */
+            $('#refresh').on('click',function(ev){
+                $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + cookie.uuid,{
+                    success: function(data, r, q){
+                        $('#messages').empty();
+                        console.log("Messages data:",data, r, q)
+                        for(var entry of data){
+                            insertEntry(entry);
+                        }
+                    }
+                })
+            });
+
+            /*  Refresh Loop
+             *  Periodically refreshes the page.
+             */
+            (function loop(){
+                $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip"+ cookie.uuid,{
+                    success: function(data, r, q){
+                        $('#messages').empty();
+                        console.log("Messages data:",data, r, q)
+                        for(var entry of data){
+                            insertEntry(entry);
+                        }
+                        setTimeout(loop,6000);
+                    }
+                })
+            })();
+
+            $('#send-message').on('click',
+                function(ev){
+                    var mess = $('#message_content').val();
+                    mess = mess ? mess.trim() : null;
+                    if(mess && mess != ""){
+                        console.log("Sending message:", mess);
+                        var rumor = {
+                            "Rumor" : {
+                                "MessageID": cookie.uuid + ":" + (cookie.messageIndex + 1) ,
+                                "Originator": cookie.username,
+                                "Text": mess
+                            },
+                            "EndPoint": "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + cookie.uuid
+                        }
+                        $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + cookie.uuid,{
+                            method: "POST",
+                            data: rumor,
+                            success: function(){
+                                $('#update').click();
+                            }
+                        });
+                    }
+                }
+            );
+
+        });
+    </script>
+    <style>
+        .inline{
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+    <h1 id="name"></h1>
+    <hr>
+    <h3>Write a Message</h3>
+    <hr>
+    <input type="text" id="message_content"></input>
+    <button id="send-message">Send</button>
+    <h3 class="inline">Messages:</h3><button id="refresh-messages">Refresh</button>
+    <hr>
+    <div id="messages"></div>
+</body>
+</html>
