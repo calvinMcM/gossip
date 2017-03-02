@@ -277,12 +277,12 @@ app.get('/main', function (req, res) {
 /**
  * Gets the users messages
  */
-app.get('/gossip/', function (req, res) {
+app.get('/gossip/:id', function (req, res) {
     try{
         var id = req.session.uuid;
         if(!id){throw "Could not retrieve messages"}
-        console.log("Getting messages for ",id);
-        var rumors = req.session.userData.retrieveAll();
+        console.log("Getting messages for ",id,req.session);
+        var rumors = req.session.userData.retrieveAllMessages();
         res.cookie("5Sdata",{
             uuid:req.session.userData.uuid,
             nextIndex:req.session.userData.getNextIndex(),
@@ -310,7 +310,7 @@ app.post('/gossip/:uuid', function (req, res) {
         return;
     }
 
-    if(messages.hasOwnProperty(id)){
+    if(userDatas.hasOwnProperty(id)){
         res.send("Unknown User ID");
         return;
     }

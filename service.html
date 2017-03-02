@@ -20,7 +20,7 @@
                 }
             }
 
-            var cookie = {uuid:getCookie()};
+            var cookie = getCookie();
             /*  Insertion Pipeline for inserting messages
              *  Handles the refresh button being hit.
              */
@@ -52,6 +52,7 @@
              *  Handles the refresh button being hit.
              */
             $('#refresh').on('click',function(ev){
+                console.log("Refreshing!");
                 $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + cookie.uuid,{
                     success: function(data, r, q){
                         $('#messages').empty();
@@ -67,6 +68,7 @@
              *  Periodically refreshes the page.
              */
             (function loop(){
+                console.log("Looping!",cookie);
                 $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/"+ cookie.uuid,{
                     success: function(data, r, q){
                         $('#messages').empty();
@@ -93,6 +95,7 @@
                             },
                             "EndPoint": "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + cookie.uuid
                         }
+                        console.log("Sending!")
                         $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + cookie.uuid,{
                             method: "POST",
                             data: rumor,
