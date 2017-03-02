@@ -24,7 +24,7 @@ function workQueue(want){
     this.queue = [];
     var work = want.Want;
     for(var unit of work){
-        this.queue.push({uuid:unit,index:work[unit]);
+        this.queue.push({uuid:unit,index:work[unit]});
     }
 }
 
@@ -57,7 +57,7 @@ function isWant(message){
 
 // User data storage
 
-function userData(uuid, credentials, messageIndex, messages, state, peers){
+function UserData(uuid, credentials, messageIndex, messages, state, peers){
     this.uuid = uuid;
     this.username = credentials.username;
     this.password = credentials.password;
@@ -70,7 +70,7 @@ function userData(uuid, credentials, messageIndex, messages, state, peers){
     }
 }
 
-userData.prototype = {
+UserData.prototype = {
     storeMessage: function(message){
         if(isRumor(message)){
             var body = message.Rumor;
@@ -79,7 +79,7 @@ userData.prototype = {
             var m_parts = m_id.split(":");
             var m_uuid = m_parts[0];
             var m_num = m_parts[1];
-            if(!this.messages.hasOwnProperty(m_uuid){
+            if(!this.messages.hasOwnProperty(m_uuid)){
                 this.messages[m_uuid] = {};
             }
             this.messages[m_uuid][m_num] = message;
@@ -89,11 +89,11 @@ userData.prototype = {
                 state[m_uuid] = m_num;
             }
         }
-    }
+    },
 
     getNextIndex: function(){
         return this.state[this.uuid] + 1;
-    }
+    },
 
     retrieveMessages: function(senderId, indexFrom){
         ret = [];
@@ -105,7 +105,7 @@ userData.prototype = {
             }
         }
         return ret;
-    }
+    },
 
     retrieveAllMessages: function(){
         var ret = [];
@@ -115,7 +115,7 @@ userData.prototype = {
             }
         }
         return ret;
-    }
+    },
 
     getRandomMessage: function(){
         var res = {};
@@ -123,7 +123,7 @@ userData.prototype = {
         res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
         res.target = this.peers[Math.floor(Math.random() * this.peers.length)]
         return res;
-    }
+    },
 
     // Lab 2
     addHost: function(host){
@@ -132,7 +132,7 @@ userData.prototype = {
 }
 
 // Initialization
-(function init(){
+function init(){
     var test1_uuid = uuid.v4();
     var test2_uuid = uuid.v4();
     var test3_uuid = uuid.v4();
@@ -177,19 +177,20 @@ userData.prototype = {
     var messages1 = {test1_uuid:{0:example1Message}}
     var state1 = {}
     var peers1 = [ep2];
-    userDatas[test_uuid] = new UserData(test1_uuid, creds, -1, messages1, state1, peers1);
+    userDatas[test1_uuid] = new UserData(test1_uuid, creds1, -1, messages1, state1, peers1);
 
     var messages2 = {test2_uuid:{0:example2Message}}
     var state2 = {}
     var peers2 = [ep1,ep3];
-    userDatas[test_uuid] = new UserData(test2_uuid, creds, -1, messages2, state2, peers2);
+    userDatas[test2_uuid] = new UserData(test2_uuid, creds2, -1, messages2, state2, peers2);
 
     var messages3 = {test3_uuid:{0:example3Message}}
     var state3 = {}
     var peers3 = [ep1];
-    userDatas[test_uuid] = new UserData(test3_uuid, creds, -1, messages3, state3, peers3);
+    userDatas[test3_uuid] = new UserData(test3_uuid, creds3, -1, messages3, state3, peers3);
 
-})();
+};
+init();
 
 // Message Preparation
 
@@ -242,13 +243,14 @@ app.post('/login', function (req, res) {
             var user_uuid = uuid.v4();
             credentials[key] = user_uuid;
             userDatas[user_uuid] = ud;
-            var ud = new userData(user_uuid, data, -1, {}, {}, {});
-            res.session.uuid = user_uuid;
-            res.session.userData = ud;
-            res.session.cookie.uuid = user_uuid;
+            var ud = new UserData(user_uuid, data, -1, {}, {}, {});
+            req.session.uuid = user_uuid;
+            req.session.userData = ud;
+            req.session.cookie = {"uuid":user_uuid,nextIndex:req.session.userData.getNextIndex()};
             console.log("Created account for user",data,"with data",ud);
         }
-        res.session.userData = userDatas[credentials[key]];
+        req.session.userData = userDatas[credentials[key]];
+        res.cookie("5Sdata",{uuid:credentials[key],nextIndex:0});
     }
     else{
         res.sendStatus(401);
@@ -273,6 +275,7 @@ app.get('/gossip/', function (req, res) {
         if(!id){throw "Could not retrieve messages"}
         console.log("Getting messages for ",id);
         var rumors = req.session.userData.retrieveAll();
+        res.cookie("5Sdata",{uuid:id,nextIndex:req.session.userData.getNextIndex()});
         res.send(rumors);
     }
     catch(e){
@@ -301,7 +304,7 @@ app.post('/gossip/:uuid', function (req, res) {
     }
     console.log("Adding Message for user",id, message);
 
-    if(isRumor(message) &7 userDatas.hasOwnProperty(id)){
+    if(isRumor(message) && userDatas.hasOwnProperty(id)){
         userDatas[id].storeMessage(message);
         res.send('Message recieved!');
     }

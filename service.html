@@ -7,6 +7,20 @@
     <script>
         $(document).ready(function(){
 
+            function getCookie(){
+                var allCookies = decodeURIComponent(document.cookie).split(";");
+                console.log(allCookies);
+                for(var cookie of allCookies){
+                    var c = cookie.trim().split("=");
+                    if(c[0] === "5Sdata"){
+                        var out = decodeURIComponent(c[1]);
+                        console.log("Cookie:",out);
+                        return out;
+                    }
+                }
+            }
+
+            var cookie = {uuid:getCookie()};
             /*  Insertion Pipeline for inserting messages
              *  Handles the refresh button being hit.
              */
