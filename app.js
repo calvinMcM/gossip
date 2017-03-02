@@ -242,15 +242,23 @@ app.post('/login', function (req, res) {
         if(!credentials.hasOwnProperty(key)){
             var user_uuid = uuid.v4();
             credentials[key] = user_uuid;
-            userDatas[user_uuid] = ud;
             var ud = new UserData(user_uuid, data, -1, {}, {}, {});
+            userDatas[user_uuid] = ud;
             req.session.uuid = user_uuid;
             req.session.userData = ud;
-            req.session.cookie = {"uuid":user_uuid,nextIndex:req.session.userData.getNextIndex()};
+            req.session.cookie = {
+                uuid:req.session.userData.uuid,
+                nextIndex:req.session.userData.getNextIndex(),
+                username:req.session.userData.username
+            };
             console.log("Created account for user",data,"with data",ud);
         }
         req.session.userData = userDatas[credentials[key]];
-        res.cookie("5Sdata",{uuid:credentials[key],nextIndex:0});
+        res.cookie("5Sdata",{
+            uuid:req.session.userData.uuid,
+            nextIndex:req.session.userData.getNextIndex(),
+            username:req.session.userData.username
+        });
     }
     else{
         res.sendStatus(401);
@@ -275,7 +283,11 @@ app.get('/gossip/', function (req, res) {
         if(!id){throw "Could not retrieve messages"}
         console.log("Getting messages for ",id);
         var rumors = req.session.userData.retrieveAll();
-        res.cookie("5Sdata",{uuid:id,nextIndex:req.session.userData.getNextIndex()});
+        res.cookie("5Sdata",{
+            uuid:req.session.userData.uuid,
+            nextIndex:req.session.userData.getNextIndex(),
+            username:req.session.userData.username
+        });
         res.send(rumors);
     }
     catch(e){

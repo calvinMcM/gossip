@@ -13,7 +13,7 @@
                 for(var cookie of allCookies){
                     var c = cookie.trim().split("=");
                     if(c[0] === "5Sdata"){
-                        var out = decodeURIComponent(c[1]);
+                        var out = JSON.parse(decodeURIComponent(c[1].substr(2)));
                         console.log("Cookie:",out);
                         return out;
                     }
@@ -67,7 +67,7 @@
              *  Periodically refreshes the page.
              */
             (function loop(){
-                $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip"+ cookie.uuid,{
+                $.ajax("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/"+ cookie.uuid,{
                     success: function(data, r, q){
                         $('#messages').empty();
                         console.log("Messages data:",data, r, q)
@@ -87,7 +87,7 @@
                         console.log("Sending message:", mess);
                         var rumor = {
                             "Rumor" : {
-                                "MessageID": cookie.uuid + ":" + (cookie.messageIndex + 1) ,
+                                "MessageID": cookie.uuid + ":" + (cookie.nextIndex) ,
                                 "Originator": cookie.username,
                                 "Text": mess
                             },
