@@ -46,6 +46,10 @@
              *  Handles the refresh button being hit.
              */
             function insertEntry(entry){
+                if(typeof entry != "object"){
+                    entry = JSON.parse(entry);
+                }
+                console.log("Trying to print",entry);
                 if(entry.hasOwnProperty("Rumor")){
                     var body = entry.Rumor;
 
@@ -99,7 +103,7 @@
                         console.log("Messages data:",data, r, q)
                         updateNext(getCookie().nextIndex);
                         for(var entry of data){
-                            insertEntry(JSON.parse(entry));
+                            insertEntry(entry);
                         }
                         setTimeout(loop,6000);
                     }

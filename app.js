@@ -1,7 +1,8 @@
 var express = require('express');
 var app = express();
-var session = require('express-session')
-var request = require('request')
+var session = require('express-session');
+var request = require('request');
+var needle = require('needle');
 
 // Body Parsing.
 var bodyParser = require('body-parser');
@@ -24,33 +25,30 @@ var s_root = "http://localhost:3000/"
 
 // Message Reception Logic
 
-function workQueue(want){
+function WorkQueue(want){
     if(!isWant(want)){ return; }
     this.queue = [];
     var work = want.Want;
-    for(var unit of work){
+    for(var unit in work){
         this.queue.push({uuid:unit,index:work[unit]});
     }
 }
 
-workQueue.prototype = {
-
     /**
      * Returns an object of form {uuid,index} that can be processed.
      */
-    pop: function(){
-        if(!this.isEmpty()){
-            return this.queue.shift();
+    function pop(q){
+        if(!isEmpty(q)){
+            return q.queue.shift();
         }
-    },
+    }
 
     /**
      * Returns a boolean condition about whether or not the queue is empty.
      */
-    isEmpty: function(){
-        return !this.queue.length;
+    function isEmpty(q){
+        return !q.queue.length;
     }
-}
 
 function isRumor(message){
     return message.hasOwnProperty("Rumor");
@@ -148,12 +146,24 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
         var allMessages = retrieveAllMessages(struct);
         res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
         res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
+        console.log("Generating random message:",res);
+        return res;
+    }
+
+    function getWant(struct){
+        var res = {};
+        res.want = {
+            Want:struct.state,
+            EndPoint:s_root + "gossip/" + struct.uuid
+        }
+        res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
+        console.log("Generating want:",res.want);
         return res;
     }
 
     // Lab 2
-    function addHost(struct,host){
-        struct.hosts.push(host);
+    function addPeer(struct,peer){
+        struct.peers.push(peer);
     }
 
 
@@ -222,7 +232,7 @@ init();
 
 function prepareMessage(id,want){
     var ret = [];
-    if(!id || !userData[id] || !want || !want.uuid || !want.index){ return ret; }
+    if(!id || !userDatas[id] || !want || !want.uuid || !want.index){ return ret; }
     var uuid = want.uuid;
     var index = want.index;
     ret = retrieveMessages(userDatas[id],uuid,index);
@@ -231,7 +241,7 @@ function prepareMessage(id,want){
 
 function getPropRandData(id){
     var ret = null;
-    if(!id || !userData[id]){ return ret; }
+    if(!id || !userDatas[id]){ return ret; }
     ret = getRandomMessage(userDatas[id]);
     return ret;
 }
@@ -334,32 +344,71 @@ app.post('/gossip/:uuid', function (req, res) {
         res.send("Unknown User ID");
         return;
     }
-    console.log("Adding Message for user",id, message);
+    console.log("Adding Message for user",id, message, typeof message );
 
     if(isRumor(message) && userDatas.hasOwnProperty(id)){
+        console.log("Storing message!");
         storeMessage(userDatas[id],message);
+
+        console.log("\n\nUser",id,"now has the following",userDatas[id]);
+
         res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
+        return;
     }
     else if(isWant(message)){
         // TODO: Use the workQueue to implement this part.
-        var wantQueue = new workQueue(message);
-        while(!wantQueue.isEmpty()){
-            var order = wantQueue.pop();
+        var wantQueue = new WorkQueue(message);
+        while(!isEmpty(wantQueue)){
+            var order = pop(wantQueue);
             var toSend = prepareMessage(id,order);
-            resquests.
+            for(var messageIndex in toSend){
+                console.log("Posting Wanted Material to",message.EndPoint,messageIndex,toSend[messageIndex]);
+                needle.post(message.EndPoint,toSend[messageIndex])
+            }
             // message.Endpoint // <-- Send to this address.
+            // TODO: Update state
         }
     }
-    res.send(getNextIndex(userDatas[id]));
+    else{
+        console.log("\n\n\t\tMessage is rumor",isRumor(message));
+        console.log("\t\tMessage is want",isWant(message));
+        console.log("\t\tId",id,"is known",userDatas.hasOwnProperty(id))
+        console.log("\t\tMessage:",message,"\n\n");
+    }
+    res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
 });
 
-function propogate(){
-
+function propagate(){
+    for(var i in userDatas){
+        if(userDatas.hasOwnProperty(i)){
+            console.log("[][][] PROPAGATION ON",i);
+            switch(Math.floor(Math.random() * 2)){
+                case 0:
+                    console.log("Send out a want")
+                    var w = getWant(userDatas[i]);
+                    needle.post(w.target,w.want);
+                    break;
+                case 1:
+                    console.log("Send out a rumor")
+                    var mess = getPropRandData(i);
+                    console.log("/tSending:",JSON.stringify(mess.message));
+                    needle.post(mess.target,mess.message);
+                    break;
+            }
+        }
+    }
+    setTimeout(propagate,10000);
 }
+
+var started = false;
 
 /**
  *
  */
 app.listen(3000, function () {
-  console.log('Gossip app listening on port 3000!')
+    console.log('Gossip app listening on port 3000!')
+    if(!started){
+        started = true;
+        propagate();
+    }
 })
