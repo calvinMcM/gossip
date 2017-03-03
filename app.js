@@ -125,7 +125,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     }
 
     // Lab 2
-    function addHost(: function()struct,host){
+    function addHost(struct,host){
         struct.hosts.push(host);
     }
 }
