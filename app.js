@@ -111,7 +111,7 @@ UserData.prototype = {
         var ret = [];
         for(var uuid of this.messages){
             if(this.messages.hasOwnProperty(uuid)){
-                ret = ret.concat(thie.retrieveMessages(uuid,-1));
+                ret = ret.concat(this.retrieveMessages(uuid,-1));
             }
         }
         return ret;
@@ -282,7 +282,8 @@ app.get('/gossip/:id', function (req, res) {
         var id = req.session.uuid;
         if(!id){throw "Could not retrieve messages"}
         console.log("Getting messages for ",id,req.session);
-        var rumors = req.session.userData.retrieveAllMessages();
+        var rumors = userDatas[id].retrieveAllMessages();
+	console.log("Sending Rumors:",rumors);
         res.cookie("5Sdata",{
             uuid:req.session.userData.uuid,
             nextIndex:req.session.userData.getNextIndex(),
@@ -339,5 +340,5 @@ function propogate(){
  *
  */
 app.listen(3000, function () {
-  console.log('Example app listening on port 3000!')
+  console.log('Gossip app listening on port 3000!')
 })
