@@ -70,8 +70,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     }
 }
 
-UserData.prototype = {
-    storeMessage: function(message){
+    function storeMessage(struct,message){
         if(isRumor(message)){
             var body = message.Rumor;
             console.log("Mess:",message,message.Rumor);
@@ -79,55 +78,55 @@ UserData.prototype = {
             var m_parts = m_id.split(":");
             var m_uuid = m_parts[0];
             var m_num = m_parts[1];
-            if(!this.messages.hasOwnProperty(m_uuid)){
-                this.messages[m_uuid] = {};
+            if(!struct.messages.hasOwnProperty(m_uuid)){
+                struct.messages[m_uuid] = {};
             }
-            this.messages[m_uuid][m_num] = message;
+            struct.messages[m_uuid][m_num] = message;
 
             // Update state message index tracker
-            if(!state.hasOwnProperty(m_uuid) || m_num > state[m_uuid]){
+            if(!struct.state.hasOwnProperty(m_uuid) || m_num > state[m_uuid]){
                 state[m_uuid] = m_num;
             }
         }
     },
 
-    getNextIndex: function(){
-        return this.state[this.uuid] + 1;
+    function getNextIndex(struct){
+        return struct.state[struct.uuid] + 1;
     },
 
-    retrieveMessages: function(senderId, indexFrom){
+    function retrieveMessages(struct,senderId, indexFrom){
         ret = [];
-        if(this.messages.hasOwnProperty(senderId)){
-            for(var m of this.messages[senderId]){
-                if(this.messages[senderId].hasOwnProperty(m) && m > indexFrom){
-                    ret.push(this.messages[senderId][m]);
+        if(struct.messages.hasOwnProperty(senderId)){
+            for(var m of struct.messages[senderId]){
+                if(struct.messages[senderId].hasOwnProperty(m) && m > indexFrom){
+                    ret.push(struct.messages[senderId][m]);
                 }
             }
         }
         return ret;
     },
 
-    retrieveAllMessages: function(){
+    function retrieveAllMessages(struct){
         var ret = [];
         for(var uuid of this.messages){
-            if(this.messages.hasOwnProperty(uuid)){
-                ret = ret.concat(this.retrieveMessages(uuid,-1));
+            if(struct.messages.hasOwnProperty(uuid)){
+                ret = ret.concat(struct.retrieveMessages(uuid,-1));
             }
         }
         return ret;
     },
 
-    getRandomMessage: function(){
+    function getRandomMessage(struct){
         var res = {};
-        var allMessages = this.retrieveAllMessages();
+        var allMessages = struct.retrieveAllMessages();
         res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
-        res.target = this.peers[Math.floor(Math.random() * this.peers.length)]
+        res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
         return res;
     },
 
     // Lab 2
-    addHost: function(host){
-        this.hosts.push(host);
+    function addHost(: function()struct,host){
+        struct.hosts.push(host);
     }
 }
 
@@ -199,14 +198,14 @@ function prepareMessage(id,want){
     if(!id || !userData[id] || !want || !want.uuid || !want.index){ return ret; }
     var uuid = want.uuid;
     var index = want.index;
-    ret = userDatas[id].retrieveMessages(uuid,index);
+    ret = retrieveMessages(userDatas[id],uuid,index);
     return ret;
 }
 
 function getPropRandData(id){
     var ret = null;
     if(!id || !userData[id]){ return ret; }
-    ret = userDatas[id].getRandomMessage();
+    ret = getRandomMessage(userDatas[id]);
     return ret;
 }
 
@@ -248,7 +247,7 @@ app.post('/login', function (req, res) {
             req.session.userData = ud;
             req.session.cookie = {
                 uuid:req.session.userData.uuid,
-                nextIndex:req.session.userData.getNextIndex(),
+                nextIndex:getNextIndex(req.session.userData),
                 username:req.session.userData.username
             };
             console.log("Created account for user",data,"with data",ud);
@@ -256,7 +255,7 @@ app.post('/login', function (req, res) {
         req.session.userData = userDatas[credentials[key]];
         res.cookie("5Sdata",{
             uuid:req.session.userData.uuid,
-            nextIndex:req.session.userData.getNextIndex(),
+            nextIndex:getNextIndex(req.session.userData),
             username:req.session.userData.username
         });
     }
@@ -282,11 +281,11 @@ app.get('/gossip/:id', function (req, res) {
         var id = req.session.uuid;
         if(!id){throw "Could not retrieve messages"}
         console.log("Getting messages for ",id,req.session);
-        var rumors = userDatas[id].retrieveAllMessages();
-	console.log("Sending Rumors:",rumors);
+        var rumors = retrieveAllMessages(userDatas[id]);
+	    console.log("Sending Rumors:",rumors);
         res.cookie("5Sdata",{
             uuid:req.session.userData.uuid,
-            nextIndex:req.session.userData.getNextIndex(),
+            nextIndex:getNextIndex(req.session.userData),
             username:req.session.userData.username
         });
         res.send(rumors);
@@ -318,7 +317,7 @@ app.post('/gossip/:uuid', function (req, res) {
     console.log("Adding Message for user",id, message);
 
     if(isRumor(message) && userDatas.hasOwnProperty(id)){
-        userDatas[id].storeMessage(message);
+        storeMessage(userDatas[id],message);
         res.send('Message recieved!');
     }
     else if(isWant(message)){
