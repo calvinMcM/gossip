@@ -88,11 +88,11 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
                 state[m_uuid] = m_num;
             }
         }
-    },
+    }
 
     function getNextIndex(struct){
         return struct.state[struct.uuid] + 1;
-    },
+    }
 
     function retrieveMessages(struct,senderId, indexFrom){
         ret = [];
@@ -104,7 +104,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
             }
         }
         return ret;
-    },
+    }
 
     function retrieveAllMessages(struct){
         var ret = [];
@@ -114,7 +114,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
             }
         }
         return ret;
-    },
+    }
 
     function getRandomMessage(struct){
         var res = {};
@@ -122,7 +122,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
         res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
         res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
         return res;
-    },
+    }
 
     // Lab 2
     function addHost(: function()struct,host){
