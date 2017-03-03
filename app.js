@@ -20,8 +20,8 @@ var credentials = {};
 var userDatas = {};
 
 // Server root
-// var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
-var s_root = "http://localhost:3000/"
+var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+// var s_root = "http://localhost:3000/"
 
 // Message Reception Logic
 
