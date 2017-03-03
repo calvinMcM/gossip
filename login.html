@@ -6,14 +6,18 @@
     <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
     <script>
         $(document).ready(function(){
+
+            // var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+            var s_root = "http://localhost:3000/"
+
             $("#login").on('click',function(ev){
                 let userdata = {username: $('#username').val(), password: $('#password').val()};
                 console.log("Logging in with userdata", userdata);
-                $.post("http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/login",userdata,
+                $.post(s_root + "login",userdata,
                     function(data, q, r){
                         console.log(data, q, r);
                         if(r.status < 300 && r.status >= 200){
-                            window.location = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/main";
+                            window.location = s_root + "main";
                         }
                         else{
                             $("body").append("<h3 style='color: red;'>Invalid Username or Password</h3>");

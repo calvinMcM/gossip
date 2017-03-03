@@ -1,6 +1,7 @@
 var express = require('express');
 var app = express();
 var session = require('express-session')
+var request = require('request')
 
 // Body Parsing.
 var bodyParser = require('body-parser');
@@ -16,6 +17,10 @@ var credentials = {};
 
 // Users
 var userDatas = {};
+
+// Server root
+// var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+var s_root = "http://localhost:3000/"
 
 // Message Reception Logic
 
@@ -81,23 +86,42 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
             if(!struct.messages.hasOwnProperty(m_uuid)){
                 struct.messages[m_uuid] = {};
             }
-            struct.messages[m_uuid][m_num] = message;
+            console.log("Storing message from",m_uuid,"Index:",m_num);
+            struct.messages[m_uuid][m_num] = JSON.stringify(message);
 
             // Update state message index tracker
-            if(!struct.state.hasOwnProperty(m_uuid) || m_num > state[m_uuid]){
-                state[m_uuid] = m_num;
+            if(!struct.state.hasOwnProperty(m_uuid) || m_num > struct.state[m_uuid]){
+                console.log("Updating index state to",m_num);
+                struct.state[m_uuid] = m_num;
             }
+            else{
+                console.log("ARG!",struct.state.hasOwnProperty(m_uuid),struct.uuid,m_uuid,struct.state[m_uuid],m_num);
+            }
+            console.log("Finished processing",struct);
+        }
+        else{
+            console.log("Cannot store non-rumor",message);
         }
     }
 
     function getNextIndex(struct){
-        return struct.state[struct.uuid] + 1;
+        try{
+            console.log("Getting next index on",struct.uuid,struct.state[struct.uuid]);
+            var val = parseInt(struct.state[struct.uuid]) + 1;
+            console.log("Returning",val)
+            return val;
+        }
+        catch(e){
+            return 0;
+        }
     }
 
     function retrieveMessages(struct,senderId, indexFrom){
         ret = [];
+        // console.log("Retrieving message for",senderId,"on",indexFrom);
         if(struct.messages.hasOwnProperty(senderId)){
-            for(var m of struct.messages[senderId]){
+            // console.log("Looks like",struct.messages[senderId]);
+            for(var m in struct.messages[senderId]){
                 if(struct.messages[senderId].hasOwnProperty(m) && m > indexFrom){
                     ret.push(struct.messages[senderId][m]);
                 }
@@ -108,17 +132,20 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
 
     function retrieveAllMessages(struct){
         var ret = [];
-        for(var uuid of this.messages){
+        // console.log("Retrieving all in",struct);
+        for(var uuid in struct.messages){
+            // console.log("Reviewing message from",uuid,struct.messages);
             if(struct.messages.hasOwnProperty(uuid)){
-                ret = ret.concat(struct.retrieveMessages(uuid,-1));
+                ret = ret.concat(retrieveMessages(struct,uuid,-1));
             }
         }
+        // console.log("Retrieval of messages returning:",ret)
         return ret;
     }
 
     function getRandomMessage(struct){
         var res = {};
-        var allMessages = struct.retrieveAllMessages();
+        var allMessages = retrieveAllMessages(struct);
         res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
         res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
         return res;
@@ -128,7 +155,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     function addHost(struct,host){
         struct.hosts.push(host);
     }
-}
+
 
 // Initialization
 function init(){
@@ -148,7 +175,7 @@ function init(){
             "Originator": "Test1",
             "Text": "I saw mommy kissing Santa Clause!"
         },
-        "EndPoint": "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + test1_uuid
+        "EndPoint": s_root + "gossip/" + test1_uuid
     }
 
     var example2Message = {
@@ -157,7 +184,7 @@ function init(){
             "Originator": "Test2",
             "Text": "They say that the owl named Kaepora Gaebora is the reincarnation of an ancient Sage."
         },
-        "EndPoint": "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + test2_uuid
+        "EndPoint": s_root + "gossip/" + test2_uuid
     }
 
     var example3Message = {
@@ -166,12 +193,12 @@ function init(){
             "Originator": "Test3",
             "Text": "They say that you can swim faster by continuously pressing B."
         },
-        "EndPoint": "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + test3_uuid
+        "EndPoint": s_root + "gossip/" + test3_uuid
     }
 
-    var ep1 = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + test1_uuid;
-    var ep2 = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + test2_uuid;
-    var ep3 = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/gossip/" + test3_uuid;
+    var ep1 = s_root + "gossip/" + test1_uuid;
+    var ep2 = s_root + "gossip/" + test2_uuid;
+    var ep3 = s_root + "gossip/" + test3_uuid;
 
     var messages1 = {test1_uuid:{0:example1Message}}
     var state1 = {}
@@ -243,20 +270,13 @@ app.post('/login', function (req, res) {
             credentials[key] = user_uuid;
             var ud = new UserData(user_uuid, data, -1, {}, {}, {});
             userDatas[user_uuid] = ud;
-            req.session.uuid = user_uuid;
-            req.session.userData = ud;
-            req.session.cookie = {
-                uuid:req.session.userData.uuid,
-                nextIndex:getNextIndex(req.session.userData),
-                username:req.session.userData.username
-            };
             console.log("Created account for user",data,"with data",ud);
         }
-        req.session.userData = userDatas[credentials[key]];
+        udt = userDatas[credentials[key]];
         res.cookie("5Sdata",{
-            uuid:req.session.userData.uuid,
-            nextIndex:getNextIndex(req.session.userData),
-            username:req.session.userData.username
+            uuid:udt.uuid,
+            nextIndex:getNextIndex(udt),
+            username:udt.username
         });
     }
     else{
@@ -278,15 +298,15 @@ app.get('/main', function (req, res) {
  */
 app.get('/gossip/:id', function (req, res) {
     try{
-        var id = req.session.uuid;
+        var id = req.params.id;
         if(!id){throw "Could not retrieve messages"}
-        console.log("Getting messages for ",id,req.session);
+        // console.log("Getting messages for ",id,req.session);
         var rumors = retrieveAllMessages(userDatas[id]);
-	    console.log("Sending Rumors:",rumors);
+	    // console.log("Sending Rumors:",rumors);
         res.cookie("5Sdata",{
-            uuid:req.session.userData.uuid,
-            nextIndex:getNextIndex(req.session.userData),
-            username:req.session.userData.username
+            uuid:id,
+            nextIndex:getNextIndex(userDatas[id]),
+            username:userDatas[id].username
         });
         res.send(rumors);
     }
@@ -310,7 +330,7 @@ app.post('/gossip/:uuid', function (req, res) {
         return;
     }
 
-    if(userDatas.hasOwnProperty(id)){
+    if(!userDatas.hasOwnProperty(id)){
         res.send("Unknown User ID");
         return;
     }
@@ -318,7 +338,7 @@ app.post('/gossip/:uuid', function (req, res) {
 
     if(isRumor(message) && userDatas.hasOwnProperty(id)){
         storeMessage(userDatas[id],message);
-        res.send('Message recieved!');
+        res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
     }
     else if(isWant(message)){
         // TODO: Use the workQueue to implement this part.
@@ -326,9 +346,11 @@ app.post('/gossip/:uuid', function (req, res) {
         while(!wantQueue.isEmpty()){
             var order = wantQueue.pop();
             var toSend = prepareMessage(id,order);
+            resquests.
             // message.Endpoint // <-- Send to this address.
         }
     }
+    res.send(getNextIndex(userDatas[id]));
 });
 
 function propogate(){
