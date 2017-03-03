@@ -34,21 +34,27 @@ function WorkQueue(want){
     }
 }
 
-    /**
-     * Returns an object of form {uuid,index} that can be processed.
-     */
-    function pop(q){
-        if(!isEmpty(q)){
-            return q.queue.shift();
-        }
+/**
+ * Returns an object of form {uuid,index} that can be processed.
+ */
+function pop(q){
+    if(!isEmpty(q)){
+        return q.queue.shift();
     }
+}
 
-    /**
-     * Returns a boolean condition about whether or not the queue is empty.
-     */
-    function isEmpty(q){
-        return !q.queue.length;
-    }
+//==============================================================================
+//
+//                      Utility Functions
+//
+//==============================================================================
+
+/**
+ * Returns a boolean condition about whether or not the queue is empty.
+ */
+function isEmpty(q){
+    return !q.queue.length;
+}
 
 function isRumor(message){
     return message.hasOwnProperty("Rumor");
@@ -58,7 +64,33 @@ function isWant(message){
     return message.hasOwnProperty("Want");
 }
 
-// User data storage
+function toObject(input){
+    ret = input;
+    if(typeof input != "object"){
+        try{
+            ret = JSON.parse(input);
+        }
+        catch(e){}
+    }
+    return ret;
+}
+
+function toJString(input){
+    ret = input;
+    if(typeof input != "string"){
+        try{
+            ret = JSON.stringify(input);
+        }
+        catch(e){}
+    }
+    return ret;
+}
+
+//==============================================================================
+//
+//                      UserData Storage
+//
+//==============================================================================
 
 function UserData(uuid, credentials, messageIndex, messages, state, peers){
     this.uuid = uuid;
@@ -84,7 +116,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
             if(!struct.messages.hasOwnProperty(m_uuid)){
                 struct.messages[m_uuid] = {};
             }
-            console.log("Storing message from",m_uuid,"Index:",m_num);
+            console.log("\n\nStoring message from",m_uuid,"Index:",m_num,"\n\n");
             struct.messages[m_uuid][m_num] = JSON.stringify(message);
 
             // Update state message index tracker
@@ -95,7 +127,6 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
             else{
                 console.log("ARG!",struct.state.hasOwnProperty(m_uuid),struct.uuid,m_uuid,struct.state[m_uuid],m_num);
             }
-            console.log("Finished processing",struct);
         }
         else{
             console.log("Cannot store non-rumor",message);
@@ -152,8 +183,15 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
 
     function getWant(struct){
         var res = {};
+        var limitedState = {};
+        for(var id in struct.state){
+            if(struct.state[id] > -1){
+                limitedState[id] = struct.state[id];
+            }
+        }
+
         res.want = {
-            Want:struct.state,
+            Want:limitedState,
             EndPoint:s_root + "gossip/" + struct.uuid
         }
         res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
@@ -210,17 +248,17 @@ function init(){
     var ep2 = s_root + "gossip/" + test2_uuid;
     var ep3 = s_root + "gossip/" + test3_uuid;
 
-    var messages1 = {test1_uuid:{0:example1Message}}
+    var messages1 = {test1_uuid:{0:JSON.stringify(example1Message)}}
     var state1 = {}
     var peers1 = [ep2];
     userDatas[test1_uuid] = new UserData(test1_uuid, creds1, -1, messages1, state1, peers1);
 
-    var messages2 = {test2_uuid:{0:example2Message}}
+    var messages2 = {test2_uuid:{0:JSON.stringify(example2Message)}}
     var state2 = {}
     var peers2 = [ep1,ep3];
     userDatas[test2_uuid] = new UserData(test2_uuid, creds2, -1, messages2, state2, peers2);
 
-    var messages3 = {test3_uuid:{0:example3Message}}
+    var messages3 = {test3_uuid:{0:JSON.stringify(example3Message)}}
     var state3 = {}
     var peers3 = [ep1];
     userDatas[test3_uuid] = new UserData(test3_uuid, creds3, -1, messages3, state3, peers3);
@@ -346,6 +384,19 @@ app.post('/gossip/:uuid', function (req, res) {
     }
     console.log("Adding Message for user",id, message, typeof message );
 
+    if(!isRumor(message) && !isWant(message)){
+        for(var item in message){
+            message = item;
+            try{
+                if(typeof message != "object"){
+                    message = JSON.parse(message);
+                }
+            }
+            catch(e){}
+            break;
+        }
+    }
+
     if(isRumor(message) && userDatas.hasOwnProperty(id)){
         console.log("Storing message!");
         storeMessage(userDatas[id],message);
@@ -373,6 +424,9 @@ app.post('/gossip/:uuid', function (req, res) {
         console.log("\n\n\t\tMessage is rumor",isRumor(message));
         console.log("\t\tMessage is want",isWant(message));
         console.log("\t\tId",id,"is known",userDatas.hasOwnProperty(id))
+        if(typeof message != "object"){
+            console.log("\t\tAlso, it isn't an object, silly.")
+        }
         console.log("\t\tMessage:",message,"\n\n");
     }
     res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
