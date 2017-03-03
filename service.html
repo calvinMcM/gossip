@@ -73,6 +73,26 @@
                 }
             }
 
+            function pareDown(dataset){
+                var mappings = {};
+                var reduced = [];
+                for(var entry of dataset){
+                    if(typeof entry != "object"){
+                        entry = JSON.parse(entry);
+                    }
+                    if(entry.hasOwnProperty("Rumor")){
+                        if(!mappings.hasOwnProperty(entry.Rumor.Originator)){
+                            mappings[entry.Rumor.Originator] = [];
+                        }
+                        if(mappings[entry.Rumor.Originator].indexOf(entry.Rumor.Text) < 0){
+                            mappings[entry.Rumor.Originator] = entry.Rumor.Text;
+                            reduced.push(entry);
+                        }
+                    }
+                }
+                return reduced;
+            }
+
             /*  Refresh Handler
              *  Handles the refresh button being hit.
              */
@@ -84,8 +104,8 @@
                         $('#messages').empty();
                         console.log("Messages data:",data, r, q)
                         updateNext(getCookie().nextIndex);
-                        for(var entry of data){
-                            insertEntry(JSON.parse(entry));
+                        for(var entry of pareDown(data)){
+                            insertEntry(entry);
                         }
                     }
                 })
@@ -102,7 +122,7 @@
                         $('#messages').empty();
                         console.log("Messages data:",data, r, q)
                         updateNext(getCookie().nextIndex);
-                        for(var entry of data){
+                        for(var entry of pareDown(data)){
                             insertEntry(entry);
                         }
                         setTimeout(loop,6000);

@@ -175,6 +175,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     function getRandomMessage(struct){
         var res = {};
         var allMessages = retrieveAllMessages(struct);
+        console.log("Generating Prop for",struct.uuid,"from",allMessages);
         res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
         res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
         console.log("Generating random message:",res);
@@ -184,6 +185,9 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     function getWant(struct){
         var res = {};
         var limitedState = {};
+
+        console.log("Constructing want for",struct.uuid,"from",struct.state)
+
         for(var id in struct.state){
             if(struct.state[id] > -1){
                 limitedState[id] = struct.state[id];
@@ -215,7 +219,7 @@ function init(){
     credentials["Test3test"] = test3_uuid;
     var creds1 = {username:"Test1",password:"test"};
     var creds2 = {username:"Test2",password:"test"};
-    var creds3 = {username:"Test2",password:"test"};
+    var creds3 = {username:"Test3",password:"test"};
 
     var example1Message = {
         "Rumor" : {
@@ -266,7 +270,11 @@ function init(){
 };
 init();
 
-// Message Preparation
+//==============================================================================
+//
+//                          Message Preparation
+//
+//==============================================================================
 
 function prepareMessage(id,want){
     var ret = [];
