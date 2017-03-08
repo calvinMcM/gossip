@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Five Square</title>
+    <link rel="icon" href="favicon.png" type="image/x-icon"/>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+    <style>
+        .box{
+            border: blue solid 1px;
+            margin: 3px;
+        }
+
+        .inline{
+            display: inline;
+        }
+    </style>
+    <script>
+        $(document).ready(function(){
+
+            var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+            // var s_root = "http://localhost:3000/"
+
+            function getCookie(){
+                var allCookies = decodeURIComponent(document.cookie).split(";");
+                console.log(allCookies);
+                for(var cookie of allCookies){
+                    var c = cookie.trim().split("=");
+                    if(c[0] === "5Sdata"){
+                        var out = JSON.parse(decodeURIComponent(c[1].substr(2)));
+                        console.log("Cookie:",out);
+                        return out;
+                    }
+                }
+            }
+
+            var cookie = getCookie();
+            var nextIndex = cookie.nextIndex;
+            function updateNext(upd){
+                console.log("Updating the next index to",upd);
+                nextIndex = upd;
+            }
+
+            $('#name').text(cookie.username);
+
+            /*  Insertion Pipeline for inserting messages
+             *  Handles the refresh button being hit.
+             */
+            function insertEntry(entry){
+                if(typeof entry != "object"){
+                    entry = JSON.parse(entry);
+                }
+                console.log("Trying to print",entry);
+                if(entry.hasOwnProperty("Rumor")){
+                    var body = entry.Rumor;
+
+                    var row = $('<div class="box">')
+
+                    var senderBox = $("<div class='inline'>")
+                    senderBox.append("<span>Sender:</span>");
+                    var senderName = $('<span>');
+                    senderName.text(body.Originator);
+
+                    var messageBox = $("<div>")
+                    messageBox.append("<span>Message:</span>");
+                    var messageText = $('<span>');
+                    messageText.text(body.Text);
+
+                    senderBox.append(senderName);
+                    messageBox.append(messageText);
+                    row.append(senderBox);
+                    row.append(messageBox);
+                    $('#messages').append(row);
+                }
+            }
+
+            function pareDown(dataset){
+                var mappings = {};
+                var reduced = [];
+                for(var entry of dataset){
+                    if(typeof entry != "object"){
+                        entry = JSON.parse(entry);
+                    }
+                    if(entry.hasOwnProperty("Rumor")){
+                        if(!mappings.hasOwnProperty(entry.Rumor.Originator)){
+                            mappings[entry.Rumor.Originator] = [];
+                        }
+                        if(mappings[entry.Rumor.Originator].indexOf(entry.Rumor.Text) < 0){
+                            mappings[entry.Rumor.Originator] = entry.Rumor.Text;
+                            reduced.push(entry);
+                        }
+                    }
+                }
+                return reduced;
+            }
+
+            /*  Refresh Handler
+             *  Handles the refresh button being hit.
+             */
+
+            function refresh(){
+                console.log("Refreshing!");
+                $.ajax(s_root + "gossip/" + cookie.uuid,{
+                    success: function(data, r, q){
+                        $('#messages').empty();
+                        console.log("Messages data:",data, r, q)
+                        updateNext(getCookie().nextIndex);
+                        for(var entry of pareDown(data)){
+                            insertEntry(entry);
+                        }
+                    }
+                })
+            }
+            $('#refresh').on('click',refresh);
+
+            /*  Refresh Loop
+             *  Periodically refreshes the page.
+             */
+            (function loop(){
+                console.log("Looping!",cookie);
+                $.ajax(s_root + "gossip/"+ cookie.uuid,{
+                    success: function(data, r, q){
+                        $('#messages').empty();
+                        console.log("Messages data:",data, r, q)
+                        updateNext(getCookie().nextIndex);
+                        for(var entry of pareDown(data)){
+                            insertEntry(entry);
+                        }
+                        setTimeout(loop,6000);
+                    }
+                })
+            })();
+
+            $('#send-message').on('click',
+                function(ev){
+                    var mess = $('#message_content').val();
+                    mess = mess ? mess.trim() : null;
+                    if(mess && mess != ""){
+                        console.log("Sending message:", mess);
+                        var rumor = {
+                            "Rumor" : {
+                                "MessageID": cookie.uuid + ":" + (nextIndex) ,
+                                "Originator": cookie.username,
+                                "Text": mess
+                            },
+                            "EndPoint": s_root + "gossip/" + cookie.uuid
+                        }
+                        console.log("Sending!")
+                        $.ajax(s_root + "gossip/" + cookie.uuid,{
+                            method: "POST",
+                            data: rumor,
+                            success: function(res,q,l){
+                                console.log("Send Message Response:",res,q,l);
+                                updateNext((JSON.parse(res).nextid));
+                                refresh();
+                            }
+                        });
+                    }
+                }
+            );
+
+        });
+    </script>
+</head>
+<body>
+    <h1 id="name"></h1>
+    <hr>
+    <h3>Write a Message</h3>
+    <input type="text" id="message_content"></input>
+    <button id="send-message">Send</button>
+    <br>
+    <br>
+    <h3>Messages:</h3><button id="refresh-messages">Refresh</button>
+    <div id="messages"></div>
+</body>
+</html>

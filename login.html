@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Five Square</title>
+    <link rel="icon" href="favicon.png" type="image/x-icon"/>
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js" integrity="sha256-hVVnYaiADRTO2PzUGmuLJr8BLUSjGIZsDYGmIJLv2b8=" crossorigin="anonymous"></script>
+    <script>
+        $(document).ready(function(){
+
+            var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+            // var s_root = "http://localhost:3000/"
+
+            $("#login").on('click',function(ev){
+                let userdata = {username: $('#username').val(), password: $('#password').val()};
+                console.log("Logging in with userdata", userdata);
+                $.post(s_root + "login",userdata,
+                    function(data, q, r){
+                        console.log(data, q, r);
+                        if(r.status < 300 && r.status >= 200){
+                            window.location = s_root + "main";
+                        }
+                        else{
+                            $("body").append("<h3 style='color: red;'>Invalid Username or Password</h3>");
+                        }
+                    });
+            })
+        });
+    </script>
+</head>
+<body>
+    <h1>Welcome to Five Square</h1>
+    <h2>The app we wrote for 462 that <i>doesn't</i> use OAuth</h2>
+    <label>Username: </label>
+    <input type="text" id="username"></input><br>
+    <label>Password: </label>
+    <input type="password" id="password"></input><br>
+    <button id="login">Login</button><br>
+    <span>Usernames and passwords must be at least 4 characters long.</span>
+</body>
+</html>

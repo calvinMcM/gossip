@@ -1,0 +1,15 @@
+{
+  "name": "gossip_peers",
+  "version": "1.0.0",
+  "description": "CS 462 Lab for peer-to-peer messaging and distributed systems.",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js",
+    "start": "node app.js"
+  },
+  "author": "Calvin McMurray",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.14.1"
+  }
+}
