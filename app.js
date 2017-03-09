@@ -1,4 +1,4 @@
-// Gossip Part 1
+// Gossip Part 2
 
 var express = require('express');
 var app = express();
@@ -207,7 +207,10 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
 
     // Lab 2
     function addPeer(struct,peer){
-        struct.peers.push(peer);
+        console.log("Adding peer to",struct.uuid,struct.peers);
+        if(struct.peers.indexOf(peer) == -1){
+            struct.peers.push(peer);
+        }
     }
 
 
@@ -326,7 +329,7 @@ app.post('/login', function (req, res) {
         if(!credentials.hasOwnProperty(key)){
             var user_uuid = uuid.v4();
             credentials[key] = user_uuid;
-            var ud = new UserData(user_uuid, data, -1, {}, {}, {});
+            var ud = new UserData(user_uuid, data, -1, {}, {}, []);
             userDatas[user_uuid] = ud;
             console.log("Created account for user",data,"with data",ud);
         }
@@ -442,6 +445,26 @@ app.post('/gossip/:uuid', function (req, res) {
     res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
 });
 
+/**
+ * Adds a peer to a user's list.
+ */
+app.post('/peer/:id',function(req,res){
+        var id = req.params.id
+        if(userDatas.hasOwnProperty(id)){
+            var json = toObject(req.body);
+            if(json.hasOwnProperty("peer")){
+                console.log("Adding peer",json.peer,"for",id);
+                addPeer(userDatas[id],json.peer);
+            }
+        }
+});
+
+//==============================================================================
+//
+//                          Message Propagation
+//
+//==============================================================================
+
 function propagate(){
     for(var i in userDatas){
         if(userDatas.hasOwnProperty(i)){
@@ -450,13 +473,17 @@ function propagate(){
                 case 0:
                     console.log("Send out a want")
                     var w = getWant(userDatas[i]);
-                    needle.post(w.target,w.want);
+                    if(w.target && w.want){
+                        needle.post(w.target,w.want);
+                    }
                     break;
                 case 1:
                     console.log("Send out a rumor")
                     var mess = getPropRandData(i);
-                    console.log("/tSending:",JSON.stringify(mess.message));
-                    needle.post(mess.target,mess.message);
+                    if(mess.target && mess.message){
+                        console.log("\tSending:",JSON.stringify(mess.message));
+                        needle.post(mess.target,mess.message);
+                    }
                     break;
             }
         }

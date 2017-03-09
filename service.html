@@ -17,7 +17,8 @@
     <script>
         $(document).ready(function(){
 
-            var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+            var s_root = "http://ec2-54-211-116-61.compute-1.amazonaws.com:3000/" // Gossip 2
+            // var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/" // Gossip 1
             // var s_root = "http://localhost:3000/"
 
             function getCookie(){
@@ -158,6 +159,26 @@
                 }
             );
 
+            $('#add-peer').on('click',function(ev){
+                var peerInput = $('#new_peer_name');
+                var pText = peerInput.val();
+                if(pText){
+                    pText = pText.trim();
+
+                    if(pText != ""){
+                        $.ajax(s_root + "peer/" + cookie.uuid,{
+                            method: "POST",
+                            data: {'peer':pText},
+                            success: function(res,q,l){
+                                console.log("Add Peer Response:",res,q,l);
+                                updateNext((JSON.parse(res).nextid));
+                                refresh();
+                            }
+                        });
+                    }
+                }
+            });
+
         });
     </script>
 </head>
@@ -167,6 +188,15 @@
     <h3>Write a Message</h3>
     <input type="text" id="message_content"></input>
     <button id="send-message">Send</button>
+    <br>
+    <br>
+    <h3>Peers:</h3>
+    <button id="refresh-messages">Refresh</button>
+    <div id="peers-list">
+        <input type="text" id="new_peer_name"></input>
+        <button id="add-peer">Add</button>
+    </div>
+    <div id="peers-list"></div>
     <br>
     <br>
     <h3>Messages:</h3><button id="refresh-messages">Refresh</button>
