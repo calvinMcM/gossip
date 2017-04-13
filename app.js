@@ -22,8 +22,13 @@ var credentials = {};
 var userDatas = {};
 
 // Server root
-var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/"
+// var s_root = "http://ec2-54-227-197-88.compute-1.amazonaws.com:3000/" // Gossip 1
+var s_root = "http://ec2-54-211-116-61.compute-1.amazonaws.com:3000/" // Gossip 2
 // var s_root = "http://localhost:3000/"
+
+// Propagation Controls
+var prop_rate = 2000;
+
 
 // Message Reception Logic
 
@@ -67,7 +72,7 @@ function isWant(message){
 }
 
 function toObject(input){
-    ret = input;
+    var ret = input;
     if(typeof input != "object"){
         try{
             ret = JSON.parse(input);
@@ -78,7 +83,7 @@ function toObject(input){
 }
 
 function toJString(input){
-    ret = input;
+    var ret = input;
     if(typeof input != "string"){
         try{
             ret = JSON.stringify(input);
@@ -110,7 +115,7 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     function storeMessage(struct,message){
         if(isRumor(message)){
             var body = message.Rumor;
-            console.log("Mess:",message,message.Rumor);
+            // console.log("Mess:",message,message.Rumor);
             var m_id = body.MessageID;
             var m_parts = m_id.split(":");
             var m_uuid = m_parts[0];
@@ -118,16 +123,18 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
             if(!struct.messages.hasOwnProperty(m_uuid)){
                 struct.messages[m_uuid] = {};
             }
-            console.log("\n\nStoring message from",m_uuid,"Index:",m_num,"\n\n");
-            struct.messages[m_uuid][m_num] = JSON.stringify(message);
+            // console.log("\n\nStoring message from",m_uuid,"Index:",m_num,"\n\n");
+            struct.messages[m_uuid][m_num] = toObject(message);
+
+            addPeer(struct,message.EndPoint);
 
             // Update state message index tracker
             if(!struct.state.hasOwnProperty(m_uuid) || m_num > struct.state[m_uuid]){
-                console.log("Updating index state to",m_num);
+                // console.log("Updating index state to",m_num);
                 struct.state[m_uuid] = m_num;
             }
             else{
-                console.log("ARG!",struct.state.hasOwnProperty(m_uuid),struct.uuid,m_uuid,struct.state[m_uuid],m_num);
+                // console.log("ARG!",struct.state.hasOwnProperty(m_uuid),struct.uuid,m_uuid,struct.state[m_uuid],m_num);
             }
         }
         else{
@@ -137,9 +144,9 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
 
     function getNextIndex(struct){
         try{
-            console.log("Getting next index on",struct.uuid,struct.state[struct.uuid]);
+            // console.log("Getting next index on",struct.uuid,struct.state[struct.uuid]);
             var val = parseInt(struct.state[struct.uuid]) + 1;
-            console.log("Returning",val)
+            // console.log("Returning",val)
             return val;
         }
         catch(e){
@@ -177,10 +184,10 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
     function getRandomMessage(struct){
         var res = {};
         var allMessages = retrieveAllMessages(struct);
-        console.log("Generating Prop for",struct.uuid,"from",allMessages);
-        res.message = allMessages[Math.floor(Math.random() * allMessages.length)]
-        res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
-        console.log("Generating random message:",res);
+        // console.log("Generating Prop for",struct.uuid,"from",allMessages);
+        res.message = allMessages[Math.floor(Math.random() * allMessages.length)];
+        res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)];
+        // console.log("Generating random message:",res);
         return res;
     }
 
@@ -188,37 +195,40 @@ function UserData(uuid, credentials, messageIndex, messages, state, peers){
         var res = {};
         var limitedState = {};
 
-        console.log("Constructing want for",struct.uuid,"from",struct.state)
+        // console.log("Constructing want for",struct.uuid,"from",struct.state)
 
+        var count = 0;
         for(var id in struct.state){
             if(struct.state[id] > -1){
                 limitedState[id] = struct.state[id];
+                count++;
             }
         }
 
-        res.want = {
+        res.want = !count ? null : {
             Want:limitedState,
             EndPoint:s_root + "gossip/" + struct.uuid
         }
         res.target = struct.peers[Math.floor(Math.random() * struct.peers.length)]
-        console.log("Generating want:",res.want);
+        // console.log("Generating want:",res.want);
         return res;
     }
 
     // Lab 2
     function addPeer(struct,peer){
-        console.log("Adding peer to",struct.uuid,struct.peers);
         if(struct.peers.indexOf(peer) == -1){
+            console.log("Adding peer",peer,"to",struct.uuid);
             struct.peers.push(peer);
+            console.log("\tNow has peers",struct.peers);
         }
     }
 
 
 // Initialization
 function init(){
-    var test1_uuid = uuid.v4();
-    var test2_uuid = uuid.v4();
-    var test3_uuid = uuid.v4();
+    var test1_uuid = "AllIWant4Christmas";
+    var test2_uuid = "WowThisIsc00l";
+    var test3_uuid = "AwkwardTurtle";
     credentials["Test1test"] = test1_uuid;
     credentials["Test2test"] = test2_uuid;
     credentials["Test3test"] = test3_uuid;
@@ -257,17 +267,17 @@ function init(){
     var ep2 = s_root + "gossip/" + test2_uuid;
     var ep3 = s_root + "gossip/" + test3_uuid;
 
-    var messages1 = {test1_uuid:{0:JSON.stringify(example1Message)}}
+    var messages1 = {test1_uuid:{0:toObject(example1Message)}}
     var state1 = {}
     var peers1 = [ep2];
     userDatas[test1_uuid] = new UserData(test1_uuid, creds1, -1, messages1, state1, peers1);
 
-    var messages2 = {test2_uuid:{0:JSON.stringify(example2Message)}}
+    var messages2 = {test2_uuid:{0:toObject(example2Message)}}
     var state2 = {}
     var peers2 = [ep1,ep3];
     userDatas[test2_uuid] = new UserData(test2_uuid, creds2, -1, messages2, state2, peers2);
 
-    var messages3 = {test3_uuid:{0:JSON.stringify(example3Message)}}
+    var messages3 = {test3_uuid:{0:toObject(example3Message)}}
     var state3 = {}
     var peers3 = [ep1];
     userDatas[test3_uuid] = new UserData(test3_uuid, creds3, -1, messages3, state3, peers3);
@@ -384,20 +394,23 @@ app.post('/gossip/:uuid', function (req, res) {
     var id = req.params.uuid
     var message = req.body;
 
-    console.log("Recieving message for",id,message);
+    // console.log("Recieving message for",id,message);
 
     if(!message){
         res.send("Incomplete message");
         return;
     }
 
+    message = toObject(message);
+
     if(!userDatas.hasOwnProperty(id)){
         res.send("Unknown User ID");
         return;
     }
-    console.log("Adding Message for user",id, message, typeof message );
+    // console.log("Adding Message for user",id, message, typeof message );
 
     if(!isRumor(message) && !isWant(message)){
+        console.log("Indiscernable(",id,"):",typeof message, message);
         for(var item in message){
             message = item;
             try{
@@ -411,38 +424,39 @@ app.post('/gossip/:uuid', function (req, res) {
     }
 
     if(isRumor(message) && userDatas.hasOwnProperty(id)){
-        console.log("Storing message!");
+        // console.log("Storing message!");
+        console.log("User",id,"is storing message",message.Rumor.MessageID)
         storeMessage(userDatas[id],message);
 
-        console.log("\n\nUser",id,"now has the following",userDatas[id]);
+        // console.log("\n\nUser",id,"now has the following",userDatas[id]);
 
-        res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
+        res.send(toObject({nextid:getNextIndex(userDatas[id])}));
         return;
     }
     else if(isWant(message)){
-        // TODO: Use the workQueue to implement this part.
+        console.log("User",id,"is processing a want");
         var wantQueue = new WorkQueue(message);
         while(!isEmpty(wantQueue)){
             var order = pop(wantQueue);
             var toSend = prepareMessage(id,order);
             for(var messageIndex in toSend){
-                console.log("Posting Wanted Material to",message.EndPoint,messageIndex,toSend[messageIndex]);
-                needle.post(message.EndPoint,toSend[messageIndex])
+                console.log("User",id,"is posting Wanted material to",message.EndPoint,messageIndex,toSend[messageIndex]);
+                needle.post(message.EndPoint,toObject(toSend[messageIndex]))
             }
-            // message.Endpoint // <-- Send to this address.
             // TODO: Update state
         }
     }
     else{
-        console.log("\n\n\t\tMessage is rumor",isRumor(message));
-        console.log("\t\tMessage is want",isWant(message));
-        console.log("\t\tId",id,"is known",userDatas.hasOwnProperty(id))
+        console.log("\n\nPROCESSING ERROR:")
+        console.log("\tMessage is rumor",isRumor(message));
+        console.log("\tMessage is want",isWant(message));
+        console.log("\tId",id,"is known",userDatas.hasOwnProperty(id))
         if(typeof message != "object"){
-            console.log("\t\tAlso, it isn't an object, silly.")
+            console.log("\tAlso, it isn't an object, silly.")
         }
-        console.log("\t\tMessage:",message,"\n\n");
+        console.log("\t\tMessage:",message,"=======================================================\n\n");
     }
-    res.send(JSON.stringify({nextid:getNextIndex(userDatas[id])}));
+    res.send(toJString({nextid:getNextIndex(userDatas[id])}));
 });
 
 /**
@@ -466,29 +480,34 @@ app.post('/peer/:id',function(req,res){
 //==============================================================================
 
 function propagate(){
+    console.log("\n\n[][][]PROPAGATION BEGIN[][][]");
     for(var i in userDatas){
         if(userDatas.hasOwnProperty(i)){
-            console.log("[][][] PROPAGATION ON",i);
             switch(Math.floor(Math.random() * 2)){
                 case 0:
-                    console.log("Send out a want")
                     var w = getWant(userDatas[i]);
-                    if(w.target && w.want){
-                        needle.post(w.target,w.want);
+                    if(w.target && w.want && w.want != {}){
+                        console.log("User",i,"is sending out a want to",w.target,w.want);
+                        needle.post(w.target,toObject(w.want));
+                    }
+                    else{
+                        console.log("Want blocked!",w.want,w.target);
                     }
                     break;
                 case 1:
-                    console.log("Send out a rumor")
+                    // console.log("Send out a rumor")
                     var mess = getPropRandData(i);
                     if(mess.target && mess.message){
-                        console.log("\tSending:",JSON.stringify(mess.message));
-                        needle.post(mess.target,mess.message);
+                        var jMess = toObject(mess.message);
+                        console.log("User",i,"is propagating message",toJString(jMess["Rumor"]["MessageID"]),"to",mess.target);
+                        needle.post(mess.target,jMess);
                     }
                     break;
             }
         }
     }
-    setTimeout(propagate,10000);
+    setTimeout(propagate,prop_rate);
+    console.log("[][][]PROPAGATION END[][][]\n\n");
 }
 
 var started = false;

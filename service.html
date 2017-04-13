@@ -41,6 +41,28 @@
                 nextIndex = upd;
             }
 
+            function toJSON(input){
+                var ret = input;
+                if(typeof input != "object"){
+                    try{
+                        ret = JSON.parse(input);
+                    }
+                    catch(e){}
+                }
+                return ret;
+            }
+
+            function fromJSON(input){
+                var ret = input;
+                if(typeof input != "string"){
+                    try{
+                        ret = JSON.stringify(input);
+                    }
+                    catch(e){}
+                }
+                return ret;
+            }
+
             $('#name').text(cookie.username);
 
             /*  Insertion Pipeline for inserting messages
@@ -50,7 +72,7 @@
                 if(typeof entry != "object"){
                     entry = JSON.parse(entry);
                 }
-                console.log("Trying to print",entry);
+                // console.log("Trying to print",entry);
                 if(entry.hasOwnProperty("Rumor")){
                     var body = entry.Rumor;
 
@@ -117,11 +139,11 @@
              *  Periodically refreshes the page.
              */
             (function loop(){
-                console.log("Looping!",cookie);
+                // console.log("Looping!",cookie);
                 $.ajax(s_root + "gossip/"+ cookie.uuid,{
                     success: function(data, r, q){
                         $('#messages').empty();
-                        console.log("Messages data:",data, r, q)
+                        // console.log("Messages data:",data, r, q)
                         updateNext(getCookie().nextIndex);
                         for(var entry of pareDown(data)){
                             insertEntry(entry);
@@ -133,9 +155,11 @@
 
             $('#send-message').on('click',
                 function(ev){
-                    var mess = $('#message_content').val();
+                    var messField = $('#message_content');
+                    var mess = messField.val();
                     mess = mess ? mess.trim() : null;
                     if(mess && mess != ""){
+                        messField.val("");
                         console.log("Sending message:", mess);
                         var rumor = {
                             "Rumor" : {
@@ -151,7 +175,7 @@
                             data: rumor,
                             success: function(res,q,l){
                                 console.log("Send Message Response:",res,q,l);
-                                updateNext((JSON.parse(res).nextid));
+                                updateNext((toJSON(res).nextid));
                                 refresh();
                             }
                         });
@@ -164,7 +188,7 @@
                 var pText = peerInput.val();
                 if(pText){
                     pText = pText.trim();
-
+                    peerInput.val("");
                     if(pText != ""){
                         $.ajax(s_root + "peer/" + cookie.uuid,{
                             method: "POST",
@@ -191,7 +215,6 @@
     <br>
     <br>
     <h3>Peers:</h3>
-    <button id="refresh-messages">Refresh</button>
     <div id="peers-list">
         <input type="text" id="new_peer_name"></input>
         <button id="add-peer">Add</button>
